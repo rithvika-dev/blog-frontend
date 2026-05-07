@@ -1,207 +1,244 @@
-import { create } from "zustand";
+import { useForm } from "react-hook-form";
 
-import axios from "axios";
+import {
+  pageBackground,
+  formCard,
+  formTitle,
+  formGroup,
+  labelClass,
+  inputClass,
+  submitBtn,
+  errorClass,
+  mutedText,
+  linkClass,
+  loadingClass,
+} from "../styles/common";
 
-// Axios instance
-const API = axios.create({
-  baseURL:
-    "https://blog-backend-1-jcc4.onrender.com",
+import {
+  NavLink,
+  useNavigate,
+} from "react-router-dom";
 
-  withCredentials: true,
-});
+import { useAuth } from "../store/authStore";
 
-export const useAuth = create(
-  (set) => ({
-    currentUser: null,
+import { useEffect } from "react";
 
-    loading: false,
+import { toast } from "react-hot-toast";
 
-    isAuthenticated: false,
+function Login() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm();
 
-    error: null,
+  const navigate = useNavigate();
 
-    // LOGIN
-    login: async (
-      userCred
-    ) => {
-      try {
-        // Start loading
-        set({
-          loading: true,
+  // Zustand auth store
+  const {
+    login,
+    currentUser,
+    loading,
+    error,
+    isAuthenticated,
+  } = useAuth((state) => state);
 
-          currentUser: null,
+  // Handle login
+  const onUserLogin = async (
+    userCredObj
+  ) => {
+    try {
+      await login(userCredObj);
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
-          isAuthenticated: false,
-
-          error: null,
-        });
-
-        // API call
-        const res =
-          await API.post(
-            "/common-api/login",
-            userCred
-          );
-
-        console.log(
-          "Login Response:",
-          res.data
+  // Redirect after login
+  useEffect(() => {
+    if (
+      isAuthenticated === true &&
+      currentUser
+    ) {
+      if (currentUser.role === "USER") {
+        toast.success(
+          "Login successful! Redirecting to User Profile",
+          {
+            duration: 2000,
+          }
         );
 
-        // Success
-        if (res.status === 200) {
-          set({
-            currentUser:
-              res.data?.payload,
-
-            loading: false,
-
-            isAuthenticated: true,
-
-            error: null,
-          });
-        }
-      } catch (err) {
-        console.log(
-          "Login Error:",
-          err
-        );
-
-        set({
-          loading: false,
-
-          isAuthenticated: false,
-
-          currentUser: null,
-
-          error:
-            err.response?.data
-              ?.error ||
-            err.response?.data
-              ?.message ||
-            "Login failed",
-        });
+        navigate("/user-profile");
       }
-    },
 
-    // LOGOUT
-    logout: async () => {
-      try {
-        set({
-          loading: true,
-        });
-
-        // API call
-        const res =
-          await API.get(
-            "/common-api/logout"
-          );
-
-        // Success
-        if (res.status === 200) {
-          set({
-            currentUser: null,
-
-            isAuthenticated: false,
-
-            error: null,
-
-            loading: false,
-          });
-        }
-      } catch (err) {
-        console.log(
-          "Logout Error:",
-          err
+      if (
+        currentUser.role === "AUTHOR"
+      ) {
+        toast.success(
+          "Login successful! Redirecting to Author Profile",
+          {
+            duration: 2000,
+          }
         );
 
-        set({
-          loading: false,
-
-          isAuthenticated: false,
-
-          currentUser: null,
-
-          error:
-            err.response?.data
-              ?.error ||
-            err.response?.data
-              ?.message ||
-            "Logout failed",
-        });
+        navigate("/author-profile");
       }
-    },
 
-    // CHECK AUTH
-    checkAuth: async () => {
-      try {
-        set({
-          loading: true,
-        });
-
-        const res =
-          await API.get(
-            "/common-api/check-auth"
-          );
-
-        console.log(
-          "Auth Check:",
-          res.data
+      if (
+        currentUser.role === "ADMIN"
+      ) {
+        toast.success(
+          "Login successful! Redirecting to Admin Profile",
+          {
+            duration: 2000,
+          }
         );
 
-        // User authenticated
-        if (res.status === 200) {
-          set({
-            currentUser:
-              res.data.payload,
-
-            isAuthenticated: true,
-
-            loading: false,
-
-            error: null,
-          });
-        }
-      } catch (err) {
-        console.log(
-          "Auth Check Failed:",
-          err
-        );
-
-        // Unauthorized
-        if (
-          err.response?.status ===
-          401
-        ) {
-          set({
-            currentUser: null,
-
-            isAuthenticated: false,
-
-            loading: false,
-
-            error: null,
-          });
-
-          return;
-        }
-
-        // Other errors
-        set({
-          currentUser: null,
-
-          isAuthenticated: false,
-
-          loading: false,
-
-          error:
-            err.response?.data
-              ?.error ||
-            err.response?.data
-              ?.message ||
-            "Authentication failed",
-        });
+        navigate("/admin-profile");
       }
-    },
-  })
-);
+    }
+  }, [
+    isAuthenticated,
+    currentUser,
+    navigate,
+  ]);
+
+  // Loading state
+  if (loading) {
+    return (
+      <p className={loadingClass}>
+        Loading...
+      </p>
+    );
+  }
+
+  return (
+    <div
+      className={`${pageBackground} flex items-center justify-center py-16 px-4`}
+    >
+      <div className={formCard}>
+        {/* Title */}
+        <h2 className={formTitle}>
+          Sign In
+        </h2>
+
+        {/* API Error */}
+        {error && (
+          <p className={errorClass}>
+            {error}
+          </p>
+        )}
+
+        {/* Login Form */}
+        <form
+          onSubmit={handleSubmit(
+            onUserLogin
+          )}
+        >
+          {/* Email */}
+          <div className={formGroup}>
+            <label className={labelClass}>
+              Email
+            </label>
+
+            <input
+              type="email"
+              placeholder="you@example.com"
+              className={inputClass}
+              {...register("email", {
+                required:
+                  "Email is required",
+
+                validate: (
+                  value
+                ) =>
+                  value.trim()
+                    .length > 0 ||
+                  "Email cannot be empty",
+              })}
+            />
+
+            {errors.email && (
+              <p className={errorClass}>
+                {
+                  errors.email
+                    .message
+                }
+              </p>
+            )}
+          </div>
+
+          {/* Password */}
+          <div className={formGroup}>
+            <label className={labelClass}>
+              Password
+            </label>
+
+            <input
+              type="password"
+              placeholder="••••••••"
+              className={inputClass}
+              {...register(
+                "password",
+                {
+                  required:
+                    "Password is required",
+
+                  validate: (
+                    value
+                  ) =>
+                    value.trim()
+                      .length >
+                      0 ||
+                    "Password cannot be empty",
+                }
+              )}
+            />
+
+            {errors.password && (
+              <p className={errorClass}>
+                {
+                  errors.password
+                    .message
+                }
+              </p>
+            )}
+          </div>
+
+          {/* Forgot Password */}
+          <div className="text-right -mt-2 mb-4">
+            <NavLink
+              to="/forgot-password"
+              className={`${linkClass} text-xs`}
+            >
+              Forgot password?
+            </NavLink>
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            className={submitBtn}
+          >
+            Sign In
+          </button>
+        </form>
+
+        {/* Footer */}
+        <p
+          className={`${mutedText} text-center mt-5`}
+        >
+          Don't have an account?{" "}
+          <NavLink
+            to="/register"
+            className={linkClass}
+          >
+            Create one
+          </NavLink>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default Login;
