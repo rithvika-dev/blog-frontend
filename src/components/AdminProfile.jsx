@@ -40,8 +40,8 @@ function AdminProfile() {
     setError(null);
     try {
       const [usersRes, articlesRes] = await Promise.all([
-        axios.get("http://https://blog-backend-1-jcc4.onrender.com/admin-api/users", { withCredentials: true }),
-        axios.get("http://https://blog-backend-1-jcc4.onrender.com/admin-api/articles", { withCredentials: true }),
+        axios.get("https://blog-backend-1-jcc4.onrender.com/admin-api/users", { withCredentials: true }),
+        axios.get("https://blog-backend-1-jcc4.onrender.com/admin-api/articles", { withCredentials: true }),
       ]);
 
       setUsers(usersRes.data.payload || []);
@@ -68,7 +68,7 @@ function AdminProfile() {
     setUpdatingUserId(user._id);
     try {
       await axios.patch(
-        "http://https://blog-backend-1-jcc4.onrender.com/admin-api/users",
+        "https://blog-backend-1-jcc4.onrender.com/admin-api/users",
         { userId: user._id, isActive: !user.isActive },
         { withCredentials: true }
       );
