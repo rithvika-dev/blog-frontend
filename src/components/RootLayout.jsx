@@ -1,27 +1,34 @@
+import { Outlet } from "react-router-dom";
+
+import { useEffect } from "react";
+
 import Header from "./Header";
 import Footer from "./Footer";
-import { Outlet } from "react-router";
-import {useEffect} from 'react'
+
 import { useAuth } from "../store/authStore";
 
-
-
 function RootLayout() {
+  // Zustand auth function
+  const checkAuth = useAuth(
+    (state) => state.checkAuth
+  );
 
-  //import check checkAuth
-  let checkAuth=useAuth(state=>state.checkAuth)
-
-  useEffect(()=>{
-    checkAuth()
-  },[])
-
+  // Check authentication on app load
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   return (
-    <div>
+    <div className="min-h-screen flex flex-col bg-[#f5f5f7]">
+      {/* Header */}
       <Header />
-        <div className="min-h-screen mx-32">
-          <Outlet />
-        </div>
+
+      {/* Main Content */}
+      <main className="flex-1 w-full px-4 sm:px-6 md:px-10 lg:px-20 xl:px-32 py-6">
+        <Outlet />
+      </main>
+
+      {/* Footer */}
       <Footer />
     </div>
   );

@@ -1,7 +1,13 @@
-import { useParams, useLocation, useNavigate } from "react-router";
+import {
+  useParams,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useAuth } from "../store/authStore";
+import { useForm } from "react-hook-form";
 
 import {
   articlePageWrapper,
@@ -27,20 +33,33 @@ import {
   commentTime,
   commentText,
 } from "../styles/common.js";
-import { useForm } from "react-hook-form";
+
+// Reusable axios instance
+const API = axios.create({
+  baseURL: "https://blog-backend-1-jcc4.onrender.com",
+  withCredentials: true,
+});
 
 function ArticleByID() {
   const { id } = useParams();
+
   const location = useLocation();
+
   const navigate = useNavigate();
-  const { register, handleSubmit } = useForm();
+
+  const { register, handleSubmit, reset } = useForm();
 
   const user = useAuth((state) => state.currentUser);
 
-  const [article, setArticle] = useState(location.state || null);
+  const [article, setArticle] = useState(
+    location.state || null
+  );
+
   const [loading, setLoading] = useState(false);
+
   const [error, setError] = useState(null);
 
+  // Fetch article
   useEffect(() => {
     if (article) return;
 
@@ -48,22 +67,27 @@ function ArticleByID() {
       setLoading(true);
 
       try {
-        const res = await axios.get(
-          `https://blog-backend-1-jcc4.onrender.com/user-api/article/${id}`,
-          { withCredentials: true }
+        const res = await API.get(
+          `/user-api/article/${id}`
         );
 
         setArticle(res.data.payload);
       } catch (err) {
-        setError(err.response?.data?.error);
+        console.log(err);
+
+        setError(
+          err.response?.data?.message ||
+            "Unable to load article"
+        );
       } finally {
         setLoading(false);
       }
     };
 
     getArticle();
-  }, [id]);
+  }, [id, article]);
 
+  // Format IST date
   const formatDate = (date) => {
     return new Date(date).toLocaleString("en-IN", {
       timeZone: "Asia/Kolkata",
@@ -72,70 +96,97 @@ function ArticleByID() {
     });
   };
 
-  // delete & restore article
+  // Delete / Restore Article
   const toggleArticleStatus = async () => {
     const newStatus = !article.isArticleActive;
 
     const confirmMsg = newStatus
       ? "Restore this article?"
       : "Delete this article?";
+
     if (!window.confirm(confirmMsg)) return;
 
     try {
-      const res = await axios.patch(
-        "https://blog-backend-1-jcc4.onrender.com/author-api/articles",
-        { articleId: article._id, isArticleActive: newStatus },
-        { withCredentials: true }
+      const res = await API.patch(
+        "/author-api/articles",
+        {
+          articleId: article._id,
+          isArticleActive: newStatus,
+        }
       );
 
-      console.log("SUCCESS:", res.data);
-
       setArticle(res.data.payload);
-
-      // toast.success(res.data.message);
     } catch (err) {
-      console.log("ERROR:", err.response || err);
+      console.log(err);
 
-      const msg = err.response?.data?.message;
-
-      if (err.response?.status === 400) {
-        // toast(msg);
-      } else {
-        setError(msg || "Operation failed");
-      }
+      setError(
+        err.response?.data?.message ||
+          "Operation failed"
+      );
     }
   };
 
-  //edit article
+  // Edit article
   const editArticle = (articleObj) => {
-    navigate("/edit-article", { state: articleObj });
+    navigate("/edit-article", {
+      state: articleObj,
+    });
   };
 
-  //post comment by user
+  // Add comment
   const addComment = async (commentObj) => {
-    commentObj.articleId = article._id;
-    console.log(commentObj);
+    try {
+      const payload = {
+        ...commentObj,
+        articleId: article._id,
+      };
 
-    let res = await axios.put(
-      "https://blog-backend-1-jcc4.onrender.com/user-api/comment/",
-      commentObj,
-      { withCredentials: true }
-    );
+      const res = await API.put(
+        "/user-api/comment",
+        payload
+      );
 
-    if (res.status === 200) {
-      // toast.success(res.data.message);
-      setArticle(res.data.payload);
+      if (res.status === 200) {
+        setArticle(res.data.payload);
+
+        reset();
+      }
+    } catch (err) {
+      console.log(err);
+
+      setError(
+        err.response?.data?.message ||
+          "Unable to add comment"
+      );
     }
   };
 
-  if (loading) return <p className={loadingClass}>Loading article...</p>;
-  if (error) return <p className={errorClass}>{error}</p>;
-  if (!article) return null;
+  // Loading state
+  if (loading) {
+    return (
+      <p className={loadingClass}>
+        Loading article...
+      </p>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return <p className={errorClass}>{error}</p>;
+  }
+
+  // Empty state
+  if (!article) {
+    return null;
+  }
 
   return (
     <div className={articlePageWrapper}>
+      {/* Article Header */}
       <div className={articleHeader}>
-        <span className={articleCategory}>{article.category}</span>
+        <span className={articleCategory}>
+          {article.category}
+        </span>
 
         <h1 className={`${articleMainTitle} uppercase`}>
           {article.title}
@@ -143,15 +194,22 @@ function ArticleByID() {
 
         <div className={articleAuthorRow}>
           <div className={authorInfo}>
-            ✍️ {article.author?.firstName || "Author"}
+            ✍️{" "}
+            {article.author?.firstName || "Author"}
           </div>
 
-          <div>{formatDate(article.createdAt)}</div>
+          <div>
+            {formatDate(article.createdAt)}
+          </div>
         </div>
       </div>
 
-      <div className={articleContent}>{article.content}</div>
+      {/* Article Content */}
+      <div className={articleContent}>
+        {article.content}
+      </div>
 
+      {/* Author Actions */}
       {user?.role === "AUTHOR" && (
         <div className={articleActions}>
           <button
@@ -165,20 +223,28 @@ function ArticleByID() {
             className={deleteBtn}
             onClick={toggleArticleStatus}
           >
-            {article.isArticleActive ? "Delete" : "Restore"}
+            {article.isArticleActive
+              ? "Delete"
+              : "Restore"}
           </button>
         </div>
       )}
 
+      {/* User Comments */}
       {user?.role === "USER" && (
         <div className={articleActions}>
-          <form onSubmit={handleSubmit(addComment)}>
+          <form
+            onSubmit={handleSubmit(addComment)}
+          >
             <input
               type="text"
-              {...register("comment")}
+              {...register("comment", {
+                required: true,
+              })}
               className={inputClass}
               placeholder="Write your comment here..."
             />
+
             <button
               type="submit"
               className="bg-amber-600 text-white px-5 py-2 rounded-2xl mt-5"
@@ -189,6 +255,7 @@ function ArticleByID() {
         </div>
       )}
 
+      {/* Comments Section */}
       <div className={commentsWrapper}>
         {article.comments?.length === 0 && (
           <p className="text-[#a1a1a6] text-sm text-center">
@@ -196,35 +263,54 @@ function ArticleByID() {
           </p>
         )}
 
-        {article.comments?.map((commentObj, index) => {
-          const name = commentObj.user?.email || "User";
-          const firstLetter = name.charAt(0).toUpperCase();
+        {article.comments?.map(
+          (commentObj, index) => {
+            const name =
+              commentObj.user?.email || "User";
 
-          return (
-            <div key={index} className={commentCard}>
-              <div className={commentHeader}>
-                <div className={commentUserRow}>
-                  <div className={avatar}>{firstLetter}</div>
+            const firstLetter = name
+              .charAt(0)
+              .toUpperCase();
 
-                  <div>
-                    <p className={commentUser}>{name}</p>
-                    <p className={commentTime}>
-                      {formatDate(commentObj.createdAt || new Date())}
-                    </p>
+            return (
+              <div
+                key={index}
+                className={commentCard}
+              >
+                <div className={commentHeader}>
+                  <div className={commentUserRow}>
+                    <div className={avatar}>
+                      {firstLetter}
+                    </div>
+
+                    <div>
+                      <p className={commentUser}>
+                        {name}
+                      </p>
+
+                      <p className={commentTime}>
+                        {formatDate(
+                          commentObj.createdAt ||
+                            new Date()
+                        )}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <p className={commentText}>
-                {commentObj.comment}
-              </p>
-            </div>
-          );
-        })}
+                <p className={commentText}>
+                  {commentObj.comment}
+                </p>
+              </div>
+            );
+          }
+        )}
       </div>
 
+      {/* Footer */}
       <div className={articleFooter}>
-        Last updated: {formatDate(article.updatedAt)}
+        Last updated:{" "}
+        {formatDate(article.updatedAt)}
       </div>
     </div>
   );

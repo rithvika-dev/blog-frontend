@@ -1,86 +1,207 @@
 import { create } from "zustand";
+
 import axios from "axios";
 
-export const useAuth = create((set) => ({
-  currentUser: null,
-  loading: false,
-  isAuthenticated: false,
-  error: null,
-  login: async (userCred) => {
-    // const { role, ...userCredObj } = userCredWithRole;
-    try {
-      //set loading true
-      set({ loading: true, currentUser: null, isAuthenticated: false, error: null });
-      //make api call
-      let res = await axios.post("https://blog-backend-1-jcc4.onrender.com/common-api/login", userCred, { withCredentials: true });
-      //update state
-      if (res.status === 200) {
+// Axios instance
+const API = axios.create({
+  baseURL:
+    "https://blog-backend-1-jcc4.onrender.com",
+
+  withCredentials: true,
+});
+
+export const useAuth = create(
+  (set) => ({
+    currentUser: null,
+
+    loading: false,
+
+    isAuthenticated: false,
+
+    error: null,
+
+    // LOGIN
+    login: async (
+      userCred
+    ) => {
+      try {
+        // Start loading
         set({
-          currentUser: res.data?.payload,
-          loading: false,
-          isAuthenticated: true,
+          loading: true,
+
+          currentUser: null,
+
+          isAuthenticated: false,
+
           error: null,
         });
-      }
-    } catch (err) {
-      console.log("err is ", err);
-      set({
-        loading: false,
-        isAuthenticated: false,
-        currentUser: null,
-        //error: err,
-        error: err.response?.data?.error || "Login failed",
-      });
-    }
-  },
-  logout: async () => {
-    try {
-      //set loading state
-      //make logout api req
-      let res = await axios.get("https://blog-backend-1-jcc4.onrender.com/common-api/logout", { withCredentials: true });
-      //update state
-      if (res.status === 200) {
+
+        // API call
+        const res =
+          await API.post(
+            "/common-api/login",
+            userCred
+          );
+
+        console.log(
+          "Login Response:",
+          res.data
+        );
+
+        // Success
+        if (res.status === 200) {
+          set({
+            currentUser:
+              res.data?.payload,
+
+            loading: false,
+
+            isAuthenticated: true,
+
+            error: null,
+          });
+        }
+      } catch (err) {
+        console.log(
+          "Login Error:",
+          err
+        );
+
         set({
-          currentUser: null,
-          isAuthenticated: false,
-          error: null,
           loading: false,
+
+          isAuthenticated: false,
+
+          currentUser: null,
+
+          error:
+            err.response?.data
+              ?.error ||
+            err.response?.data
+              ?.message ||
+            "Login failed",
         });
       }
-    } catch (err) {
-      set({
-        loading: false,
-        isAuthenticated: false,
-        currentUser: null,
-        error: err.response?.data?.error || "Logout failed",
-      });
-    }
-  },
-  // restore login
-  checkAuth: async () => {
-    try {
-      set({ loading: true });
-      const res = await axios.get("https://blog-backend-1-jcc4.onrender.com/common-api/check-auth", { withCredentials: true });
+    },
 
-      set({
-        currentUser: res.data.payload,
-        isAuthenticated: true,
-        loading: false,
-      });
-    } catch (err) {
-      // If user is not logged in → do nothing
-      if (err.response?.status === 401) {
+    // LOGOUT
+    logout: async () => {
+      try {
+        set({
+          loading: true,
+        });
+
+        // API call
+        const res =
+          await API.get(
+            "/common-api/logout"
+          );
+
+        // Success
+        if (res.status === 200) {
+          set({
+            currentUser: null,
+
+            isAuthenticated: false,
+
+            error: null,
+
+            loading: false,
+          });
+        }
+      } catch (err) {
+        console.log(
+          "Logout Error:",
+          err
+        );
+
+        set({
+          loading: false,
+
+          isAuthenticated: false,
+
+          currentUser: null,
+
+          error:
+            err.response?.data
+              ?.error ||
+            err.response?.data
+              ?.message ||
+            "Logout failed",
+        });
+      }
+    },
+
+    // CHECK AUTH
+    checkAuth: async () => {
+      try {
+        set({
+          loading: true,
+        });
+
+        const res =
+          await API.get(
+            "/common-api/check-auth"
+          );
+
+        console.log(
+          "Auth Check:",
+          res.data
+        );
+
+        // User authenticated
+        if (res.status === 200) {
+          set({
+            currentUser:
+              res.data.payload,
+
+            isAuthenticated: true,
+
+            loading: false,
+
+            error: null,
+          });
+        }
+      } catch (err) {
+        console.log(
+          "Auth Check Failed:",
+          err
+        );
+
+        // Unauthorized
+        if (
+          err.response?.status ===
+          401
+        ) {
+          set({
+            currentUser: null,
+
+            isAuthenticated: false,
+
+            loading: false,
+
+            error: null,
+          });
+
+          return;
+        }
+
+        // Other errors
         set({
           currentUser: null,
-          isAuthenticated: false,
-          loading: false,
-        });
-        return;
-      }
 
-      // other errors
-      console.error("Auth check failed:", err);
-      set({ loading: false });
-    }
-  },
-}));
+          isAuthenticated: false,
+
+          loading: false,
+
+          error:
+            err.response?.data
+              ?.error ||
+            err.response?.data
+              ?.message ||
+            "Authentication failed",
+        });
+      }
+    },
+  })
+);

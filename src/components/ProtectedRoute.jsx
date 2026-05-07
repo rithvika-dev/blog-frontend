@@ -1,28 +1,75 @@
+import { useEffect } from "react";
+
+import { Navigate } from "react-router-dom";
+
+import { toast } from "react-hot-toast";
+
 import { useAuth } from "../store/authStore";
-import { Navigate } from "react-router";
-import {toast} from "react-hot-toast";
 
-function ProtectedRoute({ children, allowedRoles }) {
-  //get user login status from store
-  const { loading, currentUser, isAuthenticated} = useAuth();
-  //loading state
+function ProtectedRoute({
+  children,
+  allowedRoles,
+}) {
+  // Get auth state
+  const {
+    loading,
+    currentUser,
+    isAuthenticated,
+  } = useAuth();
+
+  // Show toast only once
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      toast.error(
+        "Please login to continue"
+      );
+    }
+  }, [loading, isAuthenticated]);
+
+  // Loading state
   if (loading) {
-    return <p>Loading...</p>;
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <p className="text-[#6e6e73] text-lg">
+          Loading...
+        </p>
+      </div>
+    );
   }
-  //if user not loggedin
+
+  // User not logged in
   if (!isAuthenticated) {
-    toast.error("Redirecting to Login")
-    //redirect to Login
-    return <Navigate to="/login" replace />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
   }
 
-  //check roles
-  if (allowedRoles && !allowedRoles.includes(currentUser?.role)) {
-   
-    //redirect to Login
-    return <Navigate to="/unauthorized" replace state={{ redirectTo: "/" }} />;
+  // Role authorization check
+  if (
+    allowedRoles &&
+    !allowedRoles.includes(
+      currentUser?.role
+    )
+  ) {
+    toast.error(
+      "Unauthorized access"
+    );
+
+    return (
+      <Navigate
+        to="/unauthorized"
+        replace
+        state={{
+          redirectTo: "/",
+        }}
+      />
+    );
   }
 
+  // Authorized
   return children;
 }
 

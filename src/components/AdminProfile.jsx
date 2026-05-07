@@ -1,7 +1,7 @@
 import { useAuth } from "../store/authStore";
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 
 import {
   pageWrapper,
@@ -17,6 +17,12 @@ import {
   divider,
   mutedText,
 } from "../styles/common";
+
+// Create reusable axios instance
+const API = axios.create({
+  baseURL: "https://blog-backend-1-jcc4.onrender.com",
+  withCredentials: true,
+});
 
 function AdminProfile() {
   const currentUser = useAuth((state) => state.currentUser);
@@ -38,16 +44,21 @@ function AdminProfile() {
   const fetchAdminData = async () => {
     setLoading(true);
     setError(null);
+
     try {
       const [usersRes, articlesRes] = await Promise.all([
-        axios.get("https://blog-backend-1-jcc4.onrender.com/admin-api/users", { withCredentials: true }),
-        axios.get("https://blog-backend-1-jcc4.onrender.com/admin-api/articles", { withCredentials: true }),
+        API.get("/admin-api/users"),
+        API.get("/admin-api/articles"),
       ]);
 
       setUsers(usersRes.data.payload || []);
       setArticles(articlesRes.data.payload || []);
     } catch (err) {
-      setError(err.response?.data?.message || "Unable to load admin data");
+      console.log(err);
+
+      setError(
+        err.response?.data?.message || "Unable to load admin data"
+      );
     } finally {
       setLoading(false);
     }
@@ -66,20 +77,27 @@ function AdminProfile() {
 
   const toggleUserStatus = async (user) => {
     setUpdatingUserId(user._id);
+
     try {
-      await axios.patch(
-        "https://blog-backend-1-jcc4.onrender.com/admin-api/users",
-        { userId: user._id, isActive: !user.isActive },
-        { withCredentials: true }
-      );
+      await API.patch("/admin-api/users", {
+        userId: user._id,
+        isActive: !user.isActive,
+      });
 
       setUsers((prev) =>
         prev.map((u) =>
-          u._id === user._id ? { ...u, isActive: !u.isActive } : u
+          u._id === user._id
+            ? { ...u, isActive: !u.isActive }
+            : u
         )
       );
     } catch (err) {
-      setError(err.response?.data?.message || "Unable to update user status");
+      console.log(err);
+
+      setError(
+        err.response?.data?.message ||
+          "Unable to update user status"
+      );
     } finally {
       setUpdatingUserId(null);
     }
@@ -89,28 +107,42 @@ function AdminProfile() {
     <div className={pageWrapper}>
       {error && <p className={errorClass}>{error}</p>}
 
+      {/* Header */}
       <div className="bg-white border border-[#e8e8ed] rounded-3xl p-6 mb-8 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <p className="text-sm text-[#6e6e73]">Admin Dashboard</p>
+            <p className="text-sm text-[#6e6e73]">
+              Admin Dashboard
+            </p>
+
             <h1 className="text-3xl font-semibold text-[#1d1d1f]">
               Welcome, {currentUser?.firstName}
             </h1>
+
             <p className={mutedText}>
-              Manage users, review articles and control user access.
+              Manage users, review articles and control user
+              access.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
             <button
-              className={view === "users" ? primaryBtn : secondaryBtn}
+              className={
+                view === "users"
+                  ? primaryBtn
+                  : secondaryBtn
+              }
               onClick={() => setView("users")}
             >
               Users
             </button>
 
             <button
-              className={view === "articles" ? primaryBtn : secondaryBtn}
+              className={
+                view === "articles"
+                  ? primaryBtn
+                  : secondaryBtn
+              }
               onClick={() => setView("articles")}
             >
               Articles
@@ -128,9 +160,13 @@ function AdminProfile() {
 
       <div className={divider}></div>
 
+      {/* Loading */}
       {loading ? (
-        <p className={loadingClass}>Loading admin data...</p>
+        <p className={loadingClass}>
+          Loading admin data...
+        </p>
       ) : view === "users" ? (
+        // USERS VIEW
         <div>
           <h2 className="text-xl font-semibold text-[#1d1d1f] mb-6">
             All Users
@@ -149,10 +185,15 @@ function AdminProfile() {
                     <p className="text-base font-semibold text-[#1d1d1f]">
                       {user.firstName} {user.lastName}
                     </p>
-                    <p className={mutedText}>{user.email}</p>
+
+                    <p className={mutedText}>
+                      {user.email}
+                    </p>
+
                     <p className="text-sm text-[#6e6e73] mt-1">
                       Role: {user.role}
                     </p>
+
                     <p className="text-sm mt-1">
                       Status:{" "}
                       <span
@@ -162,15 +203,21 @@ function AdminProfile() {
                             : "text-[#cc2f26]"
                         }
                       >
-                        {user.isActive ? "Active" : "Blocked"}
+                        {user.isActive
+                          ? "Active"
+                          : "Blocked"}
                       </span>
                     </p>
                   </div>
 
                   <button
                     className={ghostBtn}
-                    onClick={() => toggleUserStatus(user)}
-                    disabled={updatingUserId === user._id}
+                    onClick={() =>
+                      toggleUserStatus(user)
+                    }
+                    disabled={
+                      updatingUserId === user._id
+                    }
                   >
                     {updatingUserId === user._id
                       ? "Updating..."
@@ -184,32 +231,52 @@ function AdminProfile() {
           )}
         </div>
       ) : (
+        // ARTICLES VIEW
         <div>
           <h2 className="text-xl font-semibold text-[#1d1d1f] mb-6">
             All Articles
           </h2>
 
           {articles.length === 0 ? (
-            <p className={mutedText}>No articles found.</p>
+            <p className={mutedText}>
+              No articles found.
+            </p>
           ) : (
             <div className={articleGrid}>
               {articles.map((article) => (
-                <div className={articleCardClass} key={article._id}>
+                <div
+                  className={articleCardClass}
+                  key={article._id}
+                >
                   <div>
-                    <p className={articleTitle}>{article.title}</p>
+                    <p className={articleTitle}>
+                      {article.title}
+                    </p>
+
                     <p className="text-sm text-[#6e6e73] mt-2">
-                      {article.content.slice(0, 100)}...
+                      {article.content.slice(0, 100)}
+                      ...
                     </p>
                   </div>
 
                   <div className="mt-4 text-sm text-[#6e6e73]">
-                    <p>Category: {article.category}</p>
+                    <p>
+                      Category: {article.category}
+                    </p>
+
                     <p className="mt-2">
                       Status:{" "}
-                      {article.isArticleActive ? "Published" : "Inactive"}
+                      {article.isArticleActive
+                        ? "Published"
+                        : "Inactive"}
                     </p>
-                    <p className={`${timestampClass} mt-3`}>
-                      {formatDateIST(article.createdAt)}
+
+                    <p
+                      className={`${timestampClass} mt-3`}
+                    >
+                      {formatDateIST(
+                        article.createdAt
+                      )}
                     </p>
                   </div>
                 </div>
@@ -223,4 +290,3 @@ function AdminProfile() {
 }
 
 export default AdminProfile;
-
